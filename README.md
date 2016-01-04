@@ -4,4 +4,4 @@ AFaceRecognizerOpenCVDemoForIOS
 
 opencv库版本号：3.1.0
 
-![](https://github.com/panxiaochun/AFaceRecognizerOpenCVDemoForIOS/blob/master/picture.png)
+![](https://github.com/panxiaochun/AFaceRecognizerOpenCVDemoForIOS/blob/master/opecv.gif)
