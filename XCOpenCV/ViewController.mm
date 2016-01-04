@@ -12,27 +12,122 @@
 
 
 
-@interface ViewController ()
+@interface ViewController ()<UIImagePickerControllerDelegate,UINavigationControllerDelegate>
 {
     cv::Mat cvImage;
 }
 @property (nonatomic,weak)IBOutlet UIImageView * opencvImageView;
+@property (weak, nonatomic) IBOutlet UIActivityIndicatorView *activityIndicator;
+
+
+@property (weak, nonatomic) IBOutlet UIButton *selectPic;
+
 
 @end
 
 @implementation ViewController
 
+- (IBAction)selectPictureClick:(UIButton *)sender {
+    
+    [self chooseModeGetPic];
+}
 
+-(void) chooseModeGetPic
+{
+    UIAlertController *  actionSheet = [ UIAlertController alertControllerWithTitle:@"select" message:@"choose the way you got picture" preferredStyle:UIAlertControllerStyleActionSheet];
+   // UIAlertAction * actionSheet;
+    if ([UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera])
+    {
+      UIAlertAction*  Sheet = [UIAlertAction actionWithTitle:@"从相册选择" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+            [self selectPiture];
+        }];
+        UIAlertAction*  Sheet2 = [UIAlertAction actionWithTitle:@"从相机获取" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+            
+        }];
+        UIAlertAction*  Sheet3 = [UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+            
+        }];
+        [actionSheet addAction:Sheet];
+        [actionSheet addAction:Sheet2];
+        [actionSheet addAction:Sheet3];
+    }else
+    {
+       
+        UIAlertAction*  Sheet2 = [UIAlertAction actionWithTitle:@"从相册选择" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+            [self selectPiture];
+        }];
+        UIAlertAction*  Sheet3 = [UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+            
+        }];
+        [actionSheet addAction:Sheet2];
+        [actionSheet addAction:Sheet3];
+    }
+    [self presentViewController:actionSheet animated:YES completion:^{
+        
+    }];
+    
+    
+}
+
+-(void) selectPiture
+{
+  
+    UIImagePickerController * pickerController = [[UIImagePickerController alloc] init];
+    pickerController.delegate = self;
+    pickerController.allowsEditing = YES;
+    pickerController.sourceType = UIImagePickerControllerSourceTypeSavedPhotosAlbum;
+    [self presentViewController:pickerController animated:YES completion:^{
+        
+    }];
+    
+}
+
+-(void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary<NSString *,id> *)info
+{
+    self.activityIndicator.hidden = NO;
+    [self.activityIndicator startAnimating];
+    [picker dismissViewControllerAnimated:YES completion:^{
+        
+    }];
+    
+    UIImage * image = [info objectForKey:UIImagePickerControllerOriginalImage];
+    
+    
+    
+    
+    NSData * imageData = UIImageJPEGRepresentation(image , 0.5);
+    
+    NSString  * path = [[NSHomeDirectory() stringByAppendingPathComponent:@"Documents"] stringByAppendingPathComponent:@"newImage.png"];
+    [imageData writeToFile:path atomically:NO];
+    self.opencvImageView.image = nil;
+   // dispatch_queue_t  backGround = dispatch_queue_create("backGround", NULL);
+    dispatch_async(dispatch_get_global_queue(0, 0), ^{
+        
+        [self opencvFaceDetect:path];
+    });
+    
+}
+-(void) imagePickerControllerDidCancel:(UIImagePickerController *)picker
+{
+    [picker dismissViewControllerAnimated:YES completion:^{
+        
+    }];
+    
+}
 
 - (void)viewDidLoad {
     [super viewDidLoad];
    
+    
+    
     self.opencvImageView.frame = self.view.frame;
-    [self opencvFaceDetect];
-}
+    self.activityIndicator.hidden = YES;
+    NSLog(@"%@",NSHomeDirectory());
+    
+   }
 -(void) imageEdge
 {
-    UIImage * opencvImage = [UIImage imageNamed:@"linyuner"];
+    UIImage * opencvImage = [UIImage imageNamed:@"newImage"];
     
     UIImageToMat(opencvImage, cvImage);
     if (!cvImage.empty()) {
@@ -55,9 +150,12 @@
 
 }
 
-- (void) opencvFaceDetect  {
+- (void) opencvFaceDetect:(NSString *)path
+{
     //NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
-    UIImage * img = [UIImage imageNamed:@"linyuner"];
+  //  UIImage * img = [UIImage imageNamed:@"newImage"];
+    
+    UIImage * img = [[UIImage alloc ] initWithContentsOfFile:path];
     if(img) {
         //[self.view bringSubviewToFront:self.indicator];
         //[self.indicator startAnimating];  //由于人脸检测比较耗时，于是使用加载指示器
@@ -69,7 +167,7 @@
         cvCvtColor(image, grayImg, CV_BGR2GRAY);
         
         //将输入图像缩小4倍以加快处理速度
-        int scale = 4;
+        int scale = 1;
         IplImage *small_image = cvCreateImage(cvSize(image->width/scale,image->height/scale), IPL_DEPTH_8U, 1);
         cvResize(grayImg, small_image);
         
@@ -113,9 +211,14 @@
             
         //    [pool release];
         }
-        
-        self.opencvImageView.image = [UIImage imageWithCGImage:CGBitmapContextCreateImage(contextRef)];
-        CGContextRelease(contextRef);
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            
+            [self.activityIndicator stopAnimating];
+            self.activityIndicator.hidden = YES;
+            self.opencvImageView.image = [UIImage imageWithCGImage:CGBitmapContextCreateImage(contextRef)];
+
+        });
+               CGContextRelease(contextRef);
         CGColorSpaceRelease(colorSpace);
         
         cvReleaseMemStorage(&storage);
